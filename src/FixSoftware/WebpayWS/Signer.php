@@ -66,14 +66,27 @@ class Signer {
    * @param array $params
    * @return string
    */
-  public function sign (array $params, $base64 = self::SIGNER_BASE64_ENABLE): string {
+  public function sign (array $params, $base64 = self::SIGNER_BASE64_ENABLE, $method = null): string {
     $digestText = implode('|', $params);
+
+    if($method == 'processCardOnFilePayment')
+    {
+        $digestText = $params['messageId'] . '|' . $params['provider'] . '|' . $params['merchantNumber'] . '|' . $params['paymentNumber'] . '|' . $params['amount'] . '|' . $params['currencyCode'] . '|' . $params['captureFlag'] . '|' . $params['tokenData'] . '|' . $params['cardHolderData']['cardholderDetails']['name'] . '|' . $params['cardHolderData']['cardholderDetails']['email'] . '|' . $params['returnUrl'];
+    }
+
+    //throw new ApiException(var_dump($digestText));
+
+    $this->log([
+      'digestText' => json_encode($digestText),
+    ]);
+    
     openssl_sign($digestText, $digest, $this->getPrivateKeyResource());
+
     if($base64)
       $digest = base64_encode($digest);
 
     $this->log([
-      'digestText' => $digestText,
+      'digestText' => json_encode($digestText),
       'digest_base64' => $base64 ? $digest : base64_encode($digest),
       'base64' => $base64
     ]);
@@ -89,6 +102,7 @@ class Signer {
    */
   public function verify (array $params, $digest, $base64 = self::SIGNER_BASE64_ENABLE) {
     $data = implode('|', $params);
+
     $digest_original = $digest;
     if($base64)
       $digest = base64_decode($digest);
